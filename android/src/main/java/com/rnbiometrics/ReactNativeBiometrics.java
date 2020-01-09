@@ -59,10 +59,13 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                 Context context = getReactApplicationContext();
                 BiometricManager biometricManager = BiometricManager.from(reactApplicationContext);
                 int canAuthenticate = biometricManager.canAuthenticate();
-                
+                KeyguardManager keyguardManager = (KeyguardManager) reactApplicationContext.getSystemService(Context.KEYGUARD_SERVICE);
+                boolean secure=keyguardManager.isKeyguardSecure();
+                Log.v("Secure","is device secure " + secure);
                 if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
                     WritableMap resultMap = new WritableNativeMap();
                     resultMap.putBoolean("available", true);
+                    resultMap.putBoolean("secure", secure);
                     resultMap.putString("biometryType", "Biometrics");
                     promise.resolve(resultMap);
                 } else {
@@ -80,6 +83,7 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                             resultMap.putString("error", "BIOMETRIC_ERROR_NONE_ENROLLED");
                             break;
                     }
+                    resultMap.putBoolean("secure", secure);
                     promise.resolve(resultMap);
                 }
             } 
