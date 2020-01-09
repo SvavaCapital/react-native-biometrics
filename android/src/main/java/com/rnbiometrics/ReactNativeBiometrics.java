@@ -4,7 +4,8 @@ import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
-
+import android.content.Context;
+import android.content.Intent;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.biometric.BiometricPrompt.AuthenticationCallback;
@@ -29,6 +30,8 @@ import java.security.Signature;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import android.app.KeyguardManager;
+import android.util.Log;
 
 /**
  * Created by brandon on 4/5/18.
@@ -36,6 +39,7 @@ import java.util.concurrent.Executors;
 
 public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
 
+    private static final int INTENT_AUTHENTICATE = 1234;
     protected String biometricKeyAlias = "biometric_key";
 
     public ReactNativeBiometrics(ReactApplicationContext reactContext) {
@@ -52,9 +56,10 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 ReactApplicationContext reactApplicationContext = getReactApplicationContext();
+                Context context = getReactApplicationContext();
                 BiometricManager biometricManager = BiometricManager.from(reactApplicationContext);
                 int canAuthenticate = biometricManager.canAuthenticate();
-
+                
                 if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
                     WritableMap resultMap = new WritableNativeMap();
                     resultMap.putBoolean("available", true);
@@ -75,10 +80,10 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                             resultMap.putString("error", "BIOMETRIC_ERROR_NONE_ENROLLED");
                             break;
                     }
-
                     promise.resolve(resultMap);
                 }
-            } else {
+            } 
+            else {
                 WritableMap resultMap = new WritableNativeMap();
                 resultMap.putBoolean("available", false);
                 resultMap.putString("error", "Unsupported android version");
@@ -94,15 +99,15 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 deleteBiometricKey();
-                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore");
+                KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA,"AndroidKeyStore");
                 KeyGenParameterSpec keyGenParameterSpec = new KeyGenParameterSpec.Builder(biometricKeyAlias, KeyProperties.PURPOSE_SIGN)
                         .setDigests(KeyProperties.DIGEST_SHA256)
                         .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
                         .setAlgorithmParameterSpec(new RSAKeyGenParameterSpec(2048, RSAKeyGenParameterSpec.F4))
-                        .setUserAuthenticationRequired(true)
+                        // .setUserAuthenticationRequired(true)
+                        // .setUserAuthenticationValidityDurationSeconds(10)
                         .build();
                 keyPairGenerator.initialize(keyGenParameterSpec);
-
                 KeyPair keyPair = keyPairGenerator.generateKeyPair();
                 PublicKey publicKey = keyPair.getPublic();
                 byte[] encodedPublicKey = publicKey.getEncoded();
@@ -147,6 +152,7 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                         @Override
                         public void run() {
                             try {
+                                Log.v("step0","step0");
                                 String cancelButtomText = params.getString("cancelButtonText");
                                 String promptMessage = params.getString("promptMessage");
                                 String payload = params.getString("payload");
@@ -159,20 +165,33 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                                 signature.initSign(privateKey);
 
                                 BiometricPrompt.CryptoObject cryptoObject = new BiometricPrompt.CryptoObject(signature);
-
                                 AuthenticationCallback authCallback = new CreateSignatureCallback(promise, payload);
                                 FragmentActivity fragmentActivity = (FragmentActivity) getCurrentActivity();
                                 Executor executor = Executors.newSingleThreadExecutor();
                                 BiometricPrompt biometricPrompt = new BiometricPrompt(fragmentActivity, executor, authCallback);
-
-                                PromptInfo promptInfo = new PromptInfo.Builder()
+                                ReactApplicationContext reactApplicationContext = getReactApplicationContext();
+                                Context context = getReactApplicationContext();
+                                BiometricManager biometricManager = BiometricManager.from(reactApplicationContext);
+                                int canAuthenticate = biometricManager.canAuthenticate();
+                                if(canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS){
+                                        PromptInfo promptInfo = new PromptInfo.Builder()
                                         .setDeviceCredentialAllowed(false)
                                         .setNegativeButtonText(cancelButtomText)
                                         .setTitle(promptMessage)
                                         .build();
-                                biometricPrompt.authenticate(promptInfo, cryptoObject);
+                                        biometricPrompt.authenticate(promptInfo,cryptoObject);
+                                }
+                                else{
+                                        PromptInfo promptInfo = new PromptInfo.Builder()
+                                        .setDeviceCredentialAllowed(true)
+                                        // .setNegativeButtonText(cancelButtomText)
+                                        .setTitle(promptMessage)
+                                        .build();
+                                
+                                biometricPrompt.authenticate(promptInfo);
+                                }
                             } catch (Exception e) {
-                                promise.reject("Error signing payload: " + e.getMessage(), "Error generating signature: " + e.getMessage());
+                                promise.reject("Error signing payload: " + e.getMessage(), "Error generating signature:4234234234234234234 " + e.getMessage());
                             }
                         }
                     });
@@ -180,7 +199,7 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
             promise.reject("Cannot generate keys on android versions below 6.0", "Cannot generate keys on android versions below 6.0");
         }
     }
-
+   
     @ReactMethod
     public void simplePrompt(final ReadableMap params, final Promise promise) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
