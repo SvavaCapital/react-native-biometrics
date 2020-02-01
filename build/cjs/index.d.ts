@@ -1,99 +1,75 @@
-import { NativeModules ,Platform } from 'react-native';
-
-const { ReactNativeBiometrics: bridge } = NativeModules;
-
-/** 
+/**
  * Type alias for possible biometry types
  */
-export type BiometryType = 'TouchID' | 'FaceID' | 'Biometrics';
-
+export declare type BiometryType = 'TouchID' | 'FaceID' | 'Biometrics';
 interface IsSensorAvailableResult {
-    available: boolean
-    biometryType?: BiometryType
-    error?: string
+    available: boolean;
+    biometryType?: BiometryType;
+    error?: string;
 }
-
 interface CreateKeysResult {
-    publicKey: string
+    publicKey: string;
 }
-
 interface BiometricKeysExistResult {
-    keysExist: boolean
+    keysExist: boolean;
 }
-
 interface DeleteKeysResult {
-    keysDeleted: boolean
+    keysDeleted: boolean;
 }
-
 interface CreateSignatureOptions {
-    promptMessage: string
-    payload: string
-    cancelButtonText?: string
+    promptMessage: string;
+    payload: string;
+    cancelButtonText?: string;
 }
-
 interface CreateSignatureResult {
-    success: boolean
-    signature?: string
-    error?: string
+    success: boolean;
+    signature?: string;
+    error?: string;
 }
-
 interface SimplePromptOptions {
-    promptMessage: string
-    cancelButtonText?: string
+    promptMessage: string;
+    cancelButtonText?: string;
 }
-
 interface SimplePromptResult {
-    success: boolean
-    error?: string
+    success: boolean;
+    error?: string;
 }
-
-module ReactNativeBiometrics {
+declare module ReactNativeBiometrics {
     /**
      * Enum for touch id sensor type
      */
-    export const TouchID = 'TouchID';
+    const TouchID = "TouchID";
     /**
      * Enum for face id sensor type
      */
-    export const FaceID = 'FaceID';
+    const FaceID = "FaceID";
     /**
      * Enum for generic biometrics (this is the only value available on android)
      */
-    export const Biometrics = 'Biometrics';
-
+    const Biometrics = "Biometrics";
     /**
      * Returns promise that resolves to an object with object.biometryType = Biometrics | TouchID | FaceID
      * @returns {Promise<Object>} Promise that resolves to an object with details about biometrics available
      */
-    export function isSensorAvailable(): Promise<IsSensorAvailableResult> {
-        return bridge.isSensorAvailable();
-    }
+    function isSensorAvailable(): Promise<IsSensorAvailableResult>;
     /**
      * Creates a public private key pair,returns promise that resolves to
      * an object with object.publicKey, which is the public key of the newly generated key pair
      * @returns {Promise<Object>}  Promise that resolves to object with details about the newly generated public key
      */
-    export function createKeys(): Promise<CreateKeysResult> {
-        return bridge.createKeys();
-    }
+    function createKeys(): Promise<CreateKeysResult>;
     /**
      * Returns promise that resolves to an object with object.keysExists = true | false
      * indicating if the keys were found to exist or not
      * @returns {Promise<Object>} Promise that resolves to object with details aobut the existence of keys
      */
-    export function biometricKeysExist(): Promise<BiometricKeysExistResult> {
-        return bridge.biometricKeysExist();
-    }
-
+    function biometricKeysExist(): Promise<BiometricKeysExistResult>;
     /**
      * Returns promise that resolves to an object with true | false
      * indicating if the keys were properly deleted
      * @returns {Promise<Object>} Promise that resolves to an object with details about the deletion
      */
-    export function deleteKeys(): Promise<DeleteKeysResult> {
-        return bridge.deleteKeys();
-    }
-
+    function deleteKeys(): Promise<DeleteKeysResult>;
     /**
      * Prompts user with biometrics dialog using the passed in prompt message and
      * returns promise that resolves to an object with object.signature,
@@ -104,20 +80,7 @@ module ReactNativeBiometrics {
      * @param {string} createSignatureOptions.cancelButtonText (Android only)
      * @returns {Promise<Object>}  Promise that resolves to an object cryptographic signature details
      */
-    export function createSignature(createSignatureOptions: CreateSignatureOptions): Promise<CreateSignatureResult> {
-        if (!createSignatureOptions.cancelButtonText) {
-            createSignatureOptions.cancelButtonText = 'Cancel';
-        }
-
-        return bridge.createSignature(createSignatureOptions);
-    }
-  
-    export function createSignatureAndroid(createSignatureOptions: CreateSignatureOptions): Promise<CreateSignatureResult> {
-            if (!createSignatureOptions.cancelButtonText) {
-                createSignatureOptions.cancelButtonText = 'Cancel';
-            }
-            return bridge.createSignatureAndroid(createSignatureOptions);
-    }
+    function createSignature(createSignatureOptions: CreateSignatureOptions): Promise<CreateSignatureResult>;
     /**
      * Prompts user with biometrics dialog using the passed in prompt message and
      * returns promise that resolves to an object with object.success = true if the user passes,
@@ -127,13 +90,6 @@ module ReactNativeBiometrics {
      * @param {string} simplePromptOptions.cancelButtonText (Android only)
      * @returns {Promise<Object>}  Promise that resolves an object with details about the biometrics result
      */
-    export function simplePrompt(simplePromptOptions: SimplePromptOptions): Promise<SimplePromptResult> {
-        if (!simplePromptOptions.cancelButtonText) {
-            simplePromptOptions.cancelButtonText = 'Cancel';
-        }
-
-        return bridge.simplePrompt(simplePromptOptions);
-    }
+    function simplePrompt(simplePromptOptions: SimplePromptOptions): Promise<SimplePromptResult>;
 }
-
 export default ReactNativeBiometrics;

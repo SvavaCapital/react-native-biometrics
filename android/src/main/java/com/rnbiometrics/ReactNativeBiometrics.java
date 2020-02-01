@@ -1,5 +1,6 @@
 package com.rnbiometrics;
 
+import android.app.Activity;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
@@ -11,7 +12,10 @@ import androidx.biometric.BiometricPrompt;
 import androidx.biometric.BiometricPrompt.AuthenticationCallback;
 import androidx.biometric.BiometricPrompt.PromptInfo;
 import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.LifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
 
+import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -33,13 +37,17 @@ import java.util.concurrent.Executors;
 import android.app.KeyguardManager;
 import android.util.Log;
 
+import static android.app.Activity.RESULT_OK;
+
 /**
  * Created by brandon on 4/5/18.
  */
 
-public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
+public class ReactNativeBiometrics extends ReactContextBaseJavaModule  {
 
     private static final int INTENT_AUTHENTICATE = 1234;
+    public static final int REQUEST_PWD_PROMPT = 1;
+
     protected String biometricKeyAlias = "biometric_key";
 
     public ReactNativeBiometrics(ReactApplicationContext reactContext) {
@@ -156,12 +164,12 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                         @Override
                         public void run() {
                             try {
-                                Log.v("step0","step0");
-                                String cancelButtomText = params.getString("cancelButtonText");
+                                String cancelButtomText = params.getString("cancelButtonText"); 
                                 String promptMessage = params.getString("promptMessage");
-                                String payload = params.getString("payload");
-
-                                Signature signature = Signature.getInstance("SHA256withRSA");
+                                final String payload = params.getString("payload");
+                                final String requestFrom = params.getString("requestFrom");
+                                Log.v("request form ",requestFrom);
+                                final Signature signature = Signature.getInstance("SHA256withRSA");
                                 KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
                                 keyStore.load(null);
 
@@ -169,7 +177,7 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                                 signature.initSign(privateKey);
 
                                 BiometricPrompt.CryptoObject cryptoObject = new BiometricPrompt.CryptoObject(signature);
-                                AuthenticationCallback authCallback = new CreateSignatureCallback(promise, payload);
+                                final AuthenticationCallback authCallback = new CreateSignatureCallback(promise, payload);
                                 FragmentActivity fragmentActivity = (FragmentActivity) getCurrentActivity();
                                 Executor executor = Executors.newSingleThreadExecutor();
                                 BiometricPrompt biometricPrompt = new BiometricPrompt(fragmentActivity, executor, authCallback);
@@ -177,7 +185,8 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                                 Context context = getReactApplicationContext();
                                 BiometricManager biometricManager = BiometricManager.from(reactApplicationContext);
                                 int canAuthenticate = biometricManager.canAuthenticate();
-                                if(canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS){
+                                if(canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS && (requestFrom.equals("otp") || requestFrom.equals("login"))){
+                                        Log.v("inside biometrics","requestFrom :"+requestFrom);
                                         PromptInfo promptInfo = new PromptInfo.Builder()
                                         .setDeviceCredentialAllowed(false)
                                         .setNegativeButtonText(cancelButtomText)
@@ -185,15 +194,58 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                                         .build();
                                         biometricPrompt.authenticate(promptInfo,cryptoObject);
                                 }
-                                else{
-                                        PromptInfo promptInfo = new PromptInfo.Builder()
-                                        .setDeviceCredentialAllowed(true)
-                                        // .setNegativeButtonText(cancelButtomText)
-                                        .setTitle(promptMessage)
-                                        .build();
-                                
-                                biometricPrompt.authenticate(promptInfo);
+                                else if(canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS && (requestFrom.equals("otp") || requestFrom.equals("login"))){
+                                        Log.v("inside biometrics","requestFrom :"+requestFrom);
+                                        WritableMap resultMap = new WritableNativeMap();
+                                        resultMap.putBoolean("success", false);
+                                        promise.resolve(resultMap);
                                 }
+                                else{ 
+                                        Log.v("inside else","requestFrom :"+requestFrom);
+                                        KeyguardManager keyguardManager = (KeyguardManager) reactApplicationContext.getSystemService(Context.KEYGUARD_SERVICE);
+                                        Intent intent = keyguardManager.createConfirmDeviceCredentialIntent("Syfe", "Please confirm your screen lock PIN, pattern or password");
+
+                                        ActivityEventListener activityEventListener= new ActivityEventListener() {
+                                            @Override
+                                            public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+                                                if (requestCode == REQUEST_PWD_PROMPT) {
+                                                    // ..it is. Did the user get the password right?
+                                                    if (resultCode == RESULT_OK) {
+                                                        try {                                            
+                                                            signature.update(payload.getBytes());
+                                                            byte[] signed = signature.sign();
+                                                            String signedString = Base64.encodeToString(signed, Base64.DEFAULT);
+                                                            signedString = signedString.replaceAll("\r", "").replaceAll("\n", "");
+                                                            Log.v("In CreateSIGNATURE", "cryptosignature " + signature);
+                                                            WritableMap resultMap = new WritableNativeMap();
+                                                            resultMap.putBoolean("success", true);
+                                                            resultMap.putString("signature", signedString);
+                                                            promise.resolve(resultMap);
+                                                        }catch (Exception e){
+                                                            Log.v("ExceptionSignature","##########################exception "+e);
+                                                        }
+                                                    } else{
+                                                        Log.v("ActResult", "requestCode" + requestCode);
+                                                        WritableMap resultMap = new WritableNativeMap();
+                                                        resultMap.putBoolean("success", false);
+                                                        promise.resolve(resultMap);
+                                                    }
+                                                }else{
+                                                    WritableMap resultMap = new WritableNativeMap();
+                                                    resultMap.putBoolean("success", false);
+                                                    promise.resolve(resultMap);
+                                                }
+                                            }
+                                            @Override
+                                            public void onNewIntent(Intent intent) {
+
+                                            }
+                                        };
+                                        reactApplicationContext.addActivityEventListener(activityEventListener);
+                                        fragmentActivity.startActivityForResult(intent, REQUEST_PWD_PROMPT);
+                                       
+                                }
+                                
                             } catch (Exception e) {
                                 promise.reject("Error signing payload: " + e.getMessage(), "Error generating signature:4234234234234234234 " + e.getMessage());
                             }
@@ -203,7 +255,6 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
             promise.reject("Cannot generate keys on android versions below 6.0", "Cannot generate keys on android versions below 6.0");
         }
     }
-   
     @ReactMethod
     public void simplePrompt(final ReadableMap params, final Promise promise) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -214,18 +265,88 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
                             try {
                                 String cancelButtomText = params.getString("cancelButtonText");
                                 String promptMessage = params.getString("promptMessage");
-
                                 AuthenticationCallback authCallback = new SimplePromptCallback(promise);
                                 FragmentActivity fragmentActivity = (FragmentActivity) getCurrentActivity();
                                 Executor executor = Executors.newSingleThreadExecutor();
                                 BiometricPrompt biometricPrompt = new BiometricPrompt(fragmentActivity, executor, authCallback);
 
-                                PromptInfo promptInfo = new PromptInfo.Builder()
-                                        .setDeviceCredentialAllowed(false)
-                                        .setNegativeButtonText(cancelButtomText)
-                                        .setTitle(promptMessage)
-                                        .build();
-                                biometricPrompt.authenticate(promptInfo);
+                                ReactApplicationContext reactApplicationContext = getReactApplicationContext();
+                                Context context = getReactApplicationContext();
+                                BiometricManager biometricManager = BiometricManager.from(reactApplicationContext);
+                                int canAuthenticate = biometricManager.from(context).canAuthenticate();
+                                Log.v("simplePrompt","canauthenticate" + canAuthenticate);
+                                if(canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS){
+                                    KeyguardManager keyguardManager = (KeyguardManager) reactApplicationContext.getSystemService(Context.KEYGUARD_SERVICE);
+                                    Intent intent = keyguardManager.createConfirmDeviceCredentialIntent("Syfe", "Please confirm your screen lock PIN, pattern or password");
+
+                                    ActivityEventListener activityEventListener= new ActivityEventListener() {
+                                        @Override
+                                        public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+                                            if (requestCode == REQUEST_PWD_PROMPT) {
+                                                // ..it is. Did the user get the password right?
+                                                if (resultCode == RESULT_OK) {
+                                                        Log.v("ActResult", "activityResult" + resultCode);
+                                                        WritableMap resultMap = new WritableNativeMap();
+                                                        resultMap.putBoolean("success", true);
+                                                        promise.resolve(resultMap);
+                                                } else {
+                                                    Log.v("ActResult", "activityResult" + resultCode);
+                                                    WritableMap resultMap = new WritableNativeMap();
+                                                    resultMap.putBoolean("success", false);
+                                                    promise.resolve(resultMap);
+                                                    // they got it wrong/cancelled
+                                                }
+                                            }else{
+                                                Log.v("ActResult", "requestCode" + requestCode);
+                                                WritableMap resultMap = new WritableNativeMap();
+                                                resultMap.putBoolean("success", false);
+                                                promise.resolve(resultMap);
+                                            }
+                                        }
+                                        @Override
+                                        public void onNewIntent(Intent intent) {
+
+                                        }
+                                    };
+                                    reactApplicationContext.addActivityEventListener(activityEventListener);
+                                    fragmentActivity.startActivityForResult(intent, REQUEST_PWD_PROMPT);
+                                }else{
+                                    Log.v("simplePrompt","===in else canauthenticate");
+                                    KeyguardManager keyguardManager = (KeyguardManager) reactApplicationContext.getSystemService(Context.KEYGUARD_SERVICE);
+                                    Intent intent = keyguardManager.createConfirmDeviceCredentialIntent("Syfe", "Please confirm your screen lock PIN, pattern or password");
+
+                                    ActivityEventListener activityEventListener= new ActivityEventListener() {
+                                        @Override
+                                        public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+                                            if (requestCode == REQUEST_PWD_PROMPT) {
+                                                // ..it is. Did the user get the password right?
+                                                if (resultCode == RESULT_OK) {
+                                                        Log.v("ActResult", "activityResult" + resultCode);
+                                                        WritableMap resultMap = new WritableNativeMap();
+                                                        resultMap.putBoolean("success", true);
+                                                        promise.resolve(resultMap);
+                                                } else {
+                                                    Log.v("ActResult", "activityResult" + resultCode);
+                                                    WritableMap resultMap = new WritableNativeMap();
+                                                    resultMap.putBoolean("success", false);
+                                                    promise.resolve(resultMap);
+                                                    // they got it wrong/cancelled
+                                                }
+                                            }else{
+                                                Log.v("ActResult", "requestCode" + requestCode);
+                                                WritableMap resultMap = new WritableNativeMap();
+                                                resultMap.putBoolean("success", false);
+                                                promise.resolve(resultMap);
+                                            }
+                                        }
+                                        @Override
+                                        public void onNewIntent(Intent intent) {
+
+                                        }
+                                    };
+                                    reactApplicationContext.addActivityEventListener(activityEventListener);
+                                    fragmentActivity.startActivityForResult(intent, REQUEST_PWD_PROMPT);
+                                }
                             } catch (Exception e) {
                                 promise.reject("Error displaying local biometric prompt: " + e.getMessage(), "Error displaying local biometric prompt: " + e.getMessage());
                             }
@@ -269,5 +390,17 @@ public class ReactNativeBiometrics extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             return false;
         }
+    }
+    private PrivateKey generateSecretKey(){
+        PrivateKey privateKey=null;
+        try {
+            KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+            keyStore.load(null);
+
+            privateKey= (PrivateKey) keyStore.getKey(biometricKeyAlias, null);
+        }catch (Exception e){
+            Log.v("THIS IS THE KEY","CHECK EXCEPTION "+e);
+        }
+        return privateKey;
     }
 }
