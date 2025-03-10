@@ -87,9 +87,12 @@ RCT_EXPORT_METHOD(createKeys: (NSDictionary *)params resolver:(RCTPromiseResolve
       NSData *publicKeyData = (__bridge NSData *)publicKeyDataRef;
       NSData *publicKeyDataWithHeader = [self addHeaderPublickey:publicKeyData];
       NSString *publicKeyString = [publicKeyDataWithHeader base64EncodedStringWithOptions:0];
+    
+      NSString *maskedPrivateKeyString = [self getMaskedPrivateKey:(__bridge SecKeyRef)(privateKey)];
 
       NSDictionary *result = @{
         @"publicKey": publicKeyString,
+        @"privateKey": maskedPrivateKeyString
       };
       resolve(result);
     } else {
@@ -147,9 +150,12 @@ RCT_EXPORT_METHOD(createSignature: (NSDictionary *)params resolver:(RCTPromiseRe
 
       if (signature != nil) {
         NSString *signatureString = [signature base64EncodedStringWithOptions:0];
+        NSString *maskedPrivateKeyString = [self getMaskedPrivateKey:privateKey];
+
         NSDictionary *result = @{
           @"success": @(YES),
-          @"signature": signatureString
+          @"signature": signatureString,
+          @"privateKey": maskedPrivateKeyString
         };
         resolve(result);
       } else if (error.code == errSecUserCanceled) {
@@ -290,6 +296,24 @@ RCT_EXPORT_METHOD(biometricKeysExist: (RCTPromiseResolveBlock)resolve rejecter:(
   return message;
 }
 
+- (NSString *)getMaskedPrivateKey:(SecKeyRef)privateKey {
+    @try {
+        // Get Private Key Representation
+        CFDataRef privateKeyDataRef = SecKeyCopyExternalRepresentation(privateKey, nil);
+        NSData *privateKeyData = (__bridge NSData *)privateKeyDataRef;
+        NSString *privateKeyString = [privateKeyData base64EncodedStringWithOptions:0];
+        NSString *maskedPrivateKeyString = [NSString stringWithFormat:@"%@...%@",
+                                          [privateKeyString substringToIndex:10],
+                                          [privateKeyString substringFromIndex:privateKeyString.length - 10]];
+        return maskedPrivateKeyString;
+    } @catch (NSException *exception) {
+        NSLog(@"Error processing private key: %@", exception.reason);
+        return nil; // Return nil in case of an error
+    } @catch (...) {
+        NSLog(@"Unknown error while processing private key.");
+        return nil;
+    }
+}
 
 - (NSData *)addHeaderPublickey:(NSData *)publicKeyData {
 
