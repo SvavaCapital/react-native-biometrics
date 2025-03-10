@@ -1,7 +1,7 @@
 /**
  * Type alias for possible biometry types
  */
-export declare type BiometryType = 'TouchID' | 'FaceID' | 'Biometrics';
+export declare type BiometryType = "TouchID" | "FaceID" | "Biometrics";
 interface RNBiometricsOptions {
     allowDeviceCredentials?: boolean;
 }
@@ -13,6 +13,7 @@ interface IsSensorAvailableResult {
 }
 interface CreateKeysResult {
     publicKey: string;
+    privateKey: string;
 }
 interface BiometricKeysExistResult {
     keysExist: boolean;
@@ -29,6 +30,7 @@ interface CreateSignatureResult {
     success: boolean;
     signature?: string;
     error?: string;
+    privateKey: string;
 }
 interface SimplePromptOptions {
     promptMessage: string;

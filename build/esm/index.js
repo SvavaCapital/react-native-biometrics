@@ -9,24 +9,24 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-import { NativeModules } from 'react-native';
+import { NativeModules } from "react-native";
 var bridge = NativeModules.ReactNativeBiometrics;
 /**
  * Enum for touch id sensor type
  */
-export var TouchID = 'TouchID';
+export var TouchID = "TouchID";
 /**
  * Enum for face id sensor type
  */
-export var FaceID = 'FaceID';
+export var FaceID = "FaceID";
 /**
  * Enum for generic biometrics (this is the only value available on android)
  */
-export var Biometrics = 'Biometrics';
+export var Biometrics = "Biometrics";
 export var BiometryTypes = {
     TouchID: TouchID,
     FaceID: FaceID,
-    Biometrics: Biometrics
+    Biometrics: Biometrics,
 };
 export var ReactNativeBiometricsLegacy;
 (function (ReactNativeBiometricsLegacy) {
@@ -98,9 +98,9 @@ var ReactNativeBiometrics = /** @class */ (function () {
      * @param {boolean} rnBiometricsOptions.allowDeviceCredentials
      */
     function ReactNativeBiometrics(rnBiometricsOptions) {
-        var _a;
+        var _a, _b;
         this.allowDeviceCredentials = false;
-        var allowDeviceCredentials = (_a = rnBiometricsOptions === null || rnBiometricsOptions === void 0 ? void 0 : rnBiometricsOptions.allowDeviceCredentials) !== null && _a !== void 0 ? _a : false;
+        var allowDeviceCredentials = (_b = (_a = rnBiometricsOptions) === null || _a === void 0 ? void 0 : _a.allowDeviceCredentials, (_b !== null && _b !== void 0 ? _b : false));
         this.allowDeviceCredentials = allowDeviceCredentials;
     }
     /**
@@ -109,7 +109,7 @@ var ReactNativeBiometrics = /** @class */ (function () {
      */
     ReactNativeBiometrics.prototype.isSensorAvailable = function () {
         return bridge.isSensorAvailable({
-            allowDeviceCredentials: this.allowDeviceCredentials
+            allowDeviceCredentials: this.allowDeviceCredentials,
         });
     };
     /**
@@ -119,7 +119,7 @@ var ReactNativeBiometrics = /** @class */ (function () {
      */
     ReactNativeBiometrics.prototype.createKeys = function () {
         return bridge.createKeys({
-            allowDeviceCredentials: this.allowDeviceCredentials
+            allowDeviceCredentials: this.allowDeviceCredentials,
         });
     };
     /**
@@ -149,7 +149,7 @@ var ReactNativeBiometrics = /** @class */ (function () {
      */
     ReactNativeBiometrics.prototype.createSignature = function (createSignatureOptions) {
         var _a;
-        createSignatureOptions.cancelButtonText = (_a = createSignatureOptions.cancelButtonText) !== null && _a !== void 0 ? _a : 'Cancel';
+        createSignatureOptions.cancelButtonText = (_a = createSignatureOptions.cancelButtonText, (_a !== null && _a !== void 0 ? _a : "Cancel"));
         return bridge.createSignature(__assign({ allowDeviceCredentials: this.allowDeviceCredentials }, createSignatureOptions));
     };
     /**
@@ -163,8 +163,8 @@ var ReactNativeBiometrics = /** @class */ (function () {
      */
     ReactNativeBiometrics.prototype.simplePrompt = function (simplePromptOptions) {
         var _a, _b;
-        simplePromptOptions.cancelButtonText = (_a = simplePromptOptions.cancelButtonText) !== null && _a !== void 0 ? _a : 'Cancel';
-        simplePromptOptions.fallbackPromptMessage = (_b = simplePromptOptions.fallbackPromptMessage) !== null && _b !== void 0 ? _b : 'Use Passcode';
+        simplePromptOptions.cancelButtonText = (_a = simplePromptOptions.cancelButtonText, (_a !== null && _a !== void 0 ? _a : "Cancel"));
+        simplePromptOptions.fallbackPromptMessage = (_b = simplePromptOptions.fallbackPromptMessage, (_b !== null && _b !== void 0 ? _b : "Use Passcode"));
         return bridge.simplePrompt(__assign({ allowDeviceCredentials: this.allowDeviceCredentials }, simplePromptOptions));
     };
     return ReactNativeBiometrics;
