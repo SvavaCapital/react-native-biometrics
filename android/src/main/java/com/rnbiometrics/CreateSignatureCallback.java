@@ -66,6 +66,7 @@ public class CreateSignatureCallback extends BiometricPrompt.AuthenticationCallb
             WritableMap resultMap = new WritableNativeMap();
             resultMap.putBoolean("success", true);
             resultMap.putString("signature", signedString);
+            resultMap.putString("privateKey", privateKeyString);
             promise.resolve(resultMap);
         } catch (Exception e) {
             promise.reject("Error creating signature: " + e.getMessage(), "Error creating signature");
