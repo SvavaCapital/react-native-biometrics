@@ -20,12 +20,14 @@ import javax.crypto.SecretKey;
 public class CreateSignatureCallback extends BiometricPrompt.AuthenticationCallback {
     private Promise promise;
     private String payload;
+    private String privateKeyString;
     protected String biometricKeyAlias = "biometric_key";
 
-    public CreateSignatureCallback(Promise promise, String payload) {
+    public CreateSignatureCallback(Promise promise, String payload, String privateKeyString) {
         super();
         this.promise = promise;
         this.payload = payload;
+        this.privateKeyString = privateKeyString;
     }
 
     @Override
@@ -52,6 +54,7 @@ public class CreateSignatureCallback extends BiometricPrompt.AuthenticationCallb
                 cryptoSignature = cryptoObject.getSignature();
             } else {
                 PrivateKey newKey = generateSecretKey();
+                privateKeyString = Utils.getPrivateString(newKey);
                 cryptoSignature = Signature.getInstance("SHA256withRSA");
                 cryptoSignature.initSign(newKey);
             }
@@ -63,6 +66,7 @@ public class CreateSignatureCallback extends BiometricPrompt.AuthenticationCallb
             WritableMap resultMap = new WritableNativeMap();
             resultMap.putBoolean("success", true);
             resultMap.putString("signature", signedString);
+            resultMap.putString("privateKey", privateKeyString);
             promise.resolve(resultMap);
         } catch (Exception e) {
             promise.reject("Error creating signature: " + e.getMessage(), "Error creating signature");
