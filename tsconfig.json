@@ -7,7 +7,13 @@
     "sourceMap": true,
     "moduleResolution": "node",
     "outDir": "build",
-    "lib": ["es2015", "es2015.promise"]
+    "lib": [
+      "es2015",
+      "es2015.promise"
+    ],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
   "include": [
     "index.ts",
