@@ -1,7 +1,7 @@
 /**
  * Type alias for possible biometry types
  */
-export declare type BiometryType = "TouchID" | "FaceID" | "Biometrics";
+export type BiometryType = "TouchID" | "FaceID" | "Biometrics";
 interface RNBiometricsOptions {
     allowDeviceCredentials?: boolean;
 }
@@ -58,7 +58,7 @@ export declare const BiometryTypes: {
     FaceID: string;
     Biometrics: string;
 };
-export declare module ReactNativeBiometricsLegacy {
+export declare namespace ReactNativeBiometricsLegacy {
     /**
      * Returns promise that resolves to an object with object.biometryType = Biometrics | TouchID | FaceID
      * @returns {Promise<Object>} Promise that resolves to an object with details about biometrics available
